@@ -5,3 +5,7 @@ __pycache__/
 .DS_Store
 .agents/
 .claude/
+.pytest_cache/
+.venv-2
+.pytest_cache/
+.venv-2/
