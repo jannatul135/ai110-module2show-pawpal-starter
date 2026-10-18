@@ -1,10 +1,7 @@
-__pycache__/
-.venv/
-.venv_new/
-.pytest_cache/
-.DS_Store
 .venv/
 .venv-1/
+__pycache__/
+._*
+.DS_Store
 .agents/
 .claude/
-._*
