@@ -44,18 +44,22 @@
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-    - I used my AI assistant to draft the UML diagram, generate the class skeleton, and review that skeleton for missing relationships and bottlenecks. In Phase 2 I used it to help fill in the core methods and write the demo script and tests.
-
+    - I used AI at every phase. I used it to draft the UML diagram, generate the class skeleton, and review that skeleton for missing relationships and bottlenecks. Later I used it to help implement the scheduling logic (sorting, filtering, recurring tasks, conflict detection), draft the pytest suite, connect the Streamlit UI with `st.session_state`, and debug problems like pytest not being installed in my virtual environment. I used an AI coding assistant inside VS Code and a separate chat assistant for step-by-step guidance, since I'm new to Git, Python environments, and Streamlit.
 - What kinds of prompts or questions were most helpful?
-    - The most helpful prompt was asking it to review my skeleton and list problems without changing the file. That gave me a list to decide on instead of code I hadn't asked for.
+    - The most helpful prompts were specific and set a limit, like asking the AI to review my skeleton and list problems without changing the file, or asking for conflict detection that returns a warning instead of crashing. Those gave me options to judge instead of code I hadn't asked for. Pasting my actual error messages and terminal output also got much better answers than describing the problem in words.
+- Which AI coding assistant features were most effective for building your scheduler?
+    - Chat was the most useful, because I could ask questions about my code and get explanations before making changes. The assistant's ability to read my files and create or edit them directly was also helpful for the skeleton and diagram, as long as I reviewed each change before keeping it.
+- How did using separate chat sessions for different phases help you stay organized?
+    - I mostly stayed in one long chat, which made it harder to separate design decisions from implementation details. When I needed to revisit an earlier decision, I had to scroll back through a lot of unrelated conversation. If I did this again, I would start a fresh chat for each phase (design, algorithms, testing) so each conversation stays focused on one job.
 
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
-    - The AI suggested adding `remove_pet()` and `remove_task()` and storing the generated schedule on the Scheduler. I rejected both because the required features don't need them, and I wanted to keep the design simple. I accepted its suggestions to link each task to its pet and to sort priority using numbers instead of text.
-
+    - When I asked the AI to review my class skeleton, it suggested adding `remove_pet()` and `remove_task()` methods and storing the generated schedule inside the Scheduler. I rejected both because the required features don't need them, and I wanted to keep the design simple. I accepted its suggestions to link each task to its pet and to sort priority using numbers instead of text. I also made two simplifying choices of my own: I stored times as zero-padded "HH:MM" strings so they sort correctly as plain text, and I kept conflict detection to exact time matches instead of a more complex overlap check.
 - How did you evaluate or verify what the AI suggested?
-    - I ran `main.py` and checked that the schedule printed in the right order with the right totals. I also ran pytest, and both tests passed.
+    - I ran `main.py` after each change and compared the output to what I expected. For example, two tasks at 08:00 produced a conflict warning, and completing a daily task created a new one due the next day. I wrote 14 pytest tests covering sorting, recurrence, conflicts, filtering, and edge cases, and they all pass. I also tested the Streamlit app by hand, adding pets and tasks, creating a conflict, and marking a recurring task complete.
+- What did you learn about being the "lead architect" when working with powerful AI tools?
+    - The AI can write code quickly, but it doesn't know what my project needs. I had to decide which suggestions to accept, keep the design small, and check every result myself. I also learned to read generated code before saving it, because copying a partial or wrong version caused real errors, like when an incomplete paste left my `app.py` with a syntax error. When I treated AI output as a draft to review instead of a final answer, I ended up with a system I can actually explain.
 ---
 
 ## 4. Testing and Verification
@@ -81,11 +85,14 @@
 **a. What went well**
 
 - What part of this project are you most satisfied with?
+    - I'm most satisfied with building the logic first and verifying it in the terminal before touching the UI. Because `pawpal_system.py` was already tested, connecting Streamlit only meant calling methods that worked.
 
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
+    - I would make conflict detection check overlapping durations instead of only exact start times, validate input (like zero-minute tasks), let users edit or delete tasks, and save data to a file so it survives restarting the app.
 
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+    - Planning the classes before coding made everything easier, and AI works best when I give it clear limits and then verify the result. The design decisions were mine, even when the AI wrote the code.

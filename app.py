@@ -12,6 +12,7 @@ if "owner" not in st.session_state:
     st.session_state.owner = Owner("Jordan", available_minutes=120)
 
 owner: Owner = st.session_state.owner
+scheduler = Scheduler(owner)
 
 st.title("🐾 PawPal+")
 st.caption("A pet care planner that organizes your pets' daily tasks.")
@@ -66,6 +67,7 @@ st.header("Tasks")
 if not owner.pets:
     st.caption("Add a pet first, then you can schedule tasks for it.")
 else:
+    # ---- Add a task
     with st.form("add_task_form", clear_on_submit=True):
         selected_pet = st.selectbox("Which pet?", [p.name for p in owner.pets])
         task_title = st.text_input("Task title", placeholder="e.g. Morning walk")
@@ -97,24 +99,72 @@ else:
             )
             st.success(f"Added '{task_title.strip()}' for {pet.name}.")
 
-    all_tasks = owner.get_all_tasks()
-    if all_tasks:
-        st.subheader("Current tasks")
+    # ---- Mark a task complete (recurring tasks create their next occurrence)
+    st.subheader("Mark a task complete")
+    pending = [t for t in scheduler.sort_by_time() if not t.completed]
+    if pending:
+        choice = st.selectbox(
+            "Pending task",
+            options=range(len(pending)),
+            format_func=lambda i: (
+                f"{pending[i].pet_name}: {pending[i].title} "
+                f"({pending[i].time or 'no time'}, due {pending[i].due_date})"
+            ),
+        )
+        if st.button("Mark complete"):
+            done_task = pending[choice]
+            next_task = scheduler.mark_task_complete(done_task)
+            st.success(f"Completed '{done_task.title}' for {done_task.pet_name}.")
+            if next_task:
+                st.info(
+                    f"This task repeats {next_task.frequency}. "
+                    f"Next one is scheduled for {next_task.due_date}."
+                )
+    else:
+        st.caption("No pending tasks.")
+
+    # ---- Conflict warnings (from Scheduler.detect_conflicts)
+    for message in scheduler.detect_conflicts():
+        st.warning(
+            f"⚠️ {message}. Consider moving one of these tasks to a different "
+            "time so you aren't doing two things at once."
+        )
+
+    # ---- Task list: sorted by time, with optional filters
+    st.subheader("Your tasks")
+    fcol1, fcol2 = st.columns(2)
+    with fcol1:
+        pet_filter = st.selectbox("Show pet", ["All pets"] + [p.name for p in owner.pets])
+    with fcol2:
+        status_filter = st.selectbox("Show status", ["All", "Pending", "Completed"])
+
+    tasks = scheduler.sort_by_time()  # chronological order
+    # Narrow the sorted list using the Scheduler's filter methods.
+    if pet_filter != "All pets":
+        keep = {id(t) for t in scheduler.filter_by_pet(pet_filter)}
+        tasks = [t for t in tasks if id(t) in keep]
+    if status_filter != "All":
+        keep = {id(t) for t in scheduler.filter_by_status(status_filter == "Completed")}
+        tasks = [t for t in tasks if id(t) in keep]
+
+    if tasks:
         st.table(
             [
                 {
+                    "Time": t.time or "--:--",
                     "Pet": t.pet_name,
                     "Task": t.title,
-                    "Time": t.time or "--:--",
                     "Min": t.duration_minutes,
                     "Priority": t.priority,
                     "Repeats": t.frequency,
+                    "Due": str(t.due_date),
+                    "Status": "✅ Done" if t.completed else "⏳ Pending",
                 }
-                for t in all_tasks
+                for t in tasks
             ]
         )
     else:
-        st.info("No tasks yet. Add one above.")
+        st.info("No tasks match this view.")
 
 st.divider()
 
@@ -123,7 +173,6 @@ st.header("Today's Schedule")
 st.caption("Builds a plan from pending tasks, highest priority first, within your available time.")
 
 if st.button("Generate schedule"):
-    scheduler = Scheduler(owner)
     schedule = scheduler.generate_schedule()
     if schedule:
         st.success(f"Here's today's plan for {owner.name}.")
@@ -140,5 +189,7 @@ if st.button("Generate schedule"):
             ]
         )
         st.info(scheduler.explain_plan())
+        if scheduler.detect_conflicts():
+            st.warning("Some tasks share a time slot. See the warnings above.")
     else:
         st.warning("Nothing to schedule yet. Add a pet and some tasks first.")
