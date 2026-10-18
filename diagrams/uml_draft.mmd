@@ -8,6 +8,8 @@ classDiagram
         +str time
         +str frequency
         +bool completed
+        +str pet_name
+        +date due_date
         +mark_complete() None
     }
 
@@ -32,6 +34,8 @@ classDiagram
         +generate_schedule() list~Task~
         +sort_by_time() list~Task~
         +filter_by_status(completed: bool) list~Task~
+        +detect_conflicts() list~str~
+        +mark_task_complete(task: Task) None
         +explain_plan() str
     }
 
