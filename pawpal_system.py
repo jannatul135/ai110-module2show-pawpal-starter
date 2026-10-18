@@ -1,9 +1,10 @@
 """PawPal+ core system: Task, Pet, Owner, and Scheduler classes."""
 
-from dataclasses import dataclass, field
-from datetime import date
+from dataclasses import dataclass, field, replace
+from datetime import date, timedelta
 
 PRIORITY_ORDER = {"high": 3, "medium": 2, "low": 1}
+RECURRENCE_DAYS = {"daily": 1, "weekly": 7}  # NEW: days until the next occurrence
 
 
 @dataclass
@@ -38,7 +39,7 @@ class Pet:
         self.tasks.append(task)
 
     def get_tasks(self) -> list[Task]:
-        """Return this pet's tasks."""
+        """Return a copy of this pet's tasks."""
         return list(self.tasks)
 
 
@@ -68,11 +69,17 @@ class Scheduler:
     def __init__(self, owner: Owner):
         self.owner = owner
 
+    def _due_today(self) -> list[Task]:
+        """Return pending tasks due today or earlier."""
+        return [
+            t for t in self.filter_by_status(completed=False)
+            if t.due_date <= date.today()
+        ]
+
     def generate_schedule(self) -> list[Task]:
         """Pick pending tasks by priority that fit the owner's time, ordered by time."""
-        pending = self.filter_by_status(completed=False)
         by_priority = sorted(
-            pending,
+            self._due_today(),
             key=lambda t: (-PRIORITY_ORDER.get(t.priority, 0), t.duration_minutes),
         )
         chosen, minutes_used = [], 0
@@ -92,18 +99,46 @@ class Scheduler:
         """Return tasks that match the given completion status."""
         return [t for t in self.owner.get_all_tasks() if t.completed == completed]
 
-    def detect_conflicts(self) -> list[str]:
-        """Return warning messages for tasks scheduled at the same time."""
-        pass
+    def filter_by_pet(self, pet_name: str) -> list[Task]:  # NEW
+        """Return tasks belonging to the pet with the given name."""
+        return [
+            t for t in self.owner.get_all_tasks()
+            if t.pet_name.lower() == pet_name.lower()
+        ]
 
-    def mark_task_complete(self, task: Task) -> None:
-        """Complete a task and create the next one if it repeats."""
-        pass
+    def detect_conflicts(self) -> list[str]:  # NEW
+        """Return a warning for each time slot with more than one pending task."""
+        slots: dict[tuple, list[Task]] = {}
+        for task in self.filter_by_status(completed=False):
+            if task.time:
+                slots.setdefault((task.due_date, task.time), []).append(task)
+
+        warnings = []
+        for (due, time), tasks in sorted(slots.items()):
+            if len(tasks) > 1:
+                names = ", ".join(f"{t.pet_name}: {t.title}" for t in tasks)
+                warnings.append(f"Conflict at {time} on {due}: {names}")
+        return warnings
+
+    def mark_task_complete(self, task: Task) -> Task | None:  # NEW
+        """Complete a task; if it repeats, add the next occurrence to its pet."""
+        task.mark_complete()
+        days = RECURRENCE_DAYS.get(task.frequency)
+        if days is None:
+            return None
+        next_task = replace(
+            task, completed=False, due_date=task.due_date + timedelta(days=days)
+        )
+        for pet in self.owner.pets:
+            if pet.name == task.pet_name:
+                pet.add_task(next_task)
+                return next_task
+        return None
 
     def explain_plan(self) -> str:
         """Explain why the schedule was built the way it was."""
         scheduled = self.generate_schedule()
-        pending = self.filter_by_status(completed=False)
+        pending = self._due_today()
         minutes = sum(t.duration_minutes for t in scheduled)
         return (
             f"Scheduled {len(scheduled)} of {len(pending)} pending tasks "
