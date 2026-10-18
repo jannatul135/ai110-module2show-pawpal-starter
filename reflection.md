@@ -33,7 +33,9 @@
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+    - My conflict detection only checks for exact matching start times. It doesn't check whether a 30-minute task starting at 08:00 overlaps with a task starting at 08:15.
 - Why is that tradeoff reasonable for this scenario?
+    - Exact matching is simple, easy to read, and easy to test, and it catches the most obvious mistake of double-booking a time. Overlap checking would need start and end times for every task. For a basic pet-care planner, a warning that never crashes is more useful than a perfect calendar.
 
 ---
 
@@ -61,12 +63,16 @@
 **a. What you tested**
 
 - What behaviors did you test?
+    - I tested sorting by time (including untimed tasks), daily and weekly recurring tasks, conflict detection, filtering by pet and status, and the schedule respecting available time and priority. I also tested edge cases like an owner with no pets.
 - Why were these tests important?
+    - These are the behaviors the app depends on. If sorting or conflict detection is wrong, the owner could miss a medication or double-book a time slot.
 
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
+    - Fairly confident (4 out of 5). All 14 tests pass, and the demo output matches what I expected.
 - What edge cases would you test next if you had more time?
+    - Tasks that overlap in duration instead of only matching start times, invalid input like zero-minute tasks, and tasks that cross midnight.
 
 ---
 
